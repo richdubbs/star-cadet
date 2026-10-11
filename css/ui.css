@@ -1,0 +1,306 @@
+/*
+ * css/ui.css - OWNER: UI   STATUS: IMPLEMENTED
+ * Styles for everything src/ui creates inside the mount points of index.html (ARCHITECTURE.md 8): the menu bar, the scoreboard panel canvas,
+ * the touch buttons, the start overlay card, the pause veil, the dialogs, the toasts and the status line.
+ * Loaded AFTER css/style.css (same specificity, later wins) so it may refine the positioning of the UI mount points.
+ * Works on a black page, at phone widths (16px gutters, no horizontal scroll) and in fullscreen. System fonts only, no external resources.
+ *
+ * Scaling: --su = one ORIGINAL pixel of the 600x416 stage in CSS px (the same width formula as .stage in style.css). Text sizes of the
+ * overlay / dialogs are clamp(14px, 15 * --su, 19px): they follow the stage on big screens and stay readable on a phone.
+ * Sections: 1 tokens | 2 menu bar | 3 panel + status | 4 buttons / forms | 5 start + pause overlays | 6 dialogs | 7 toasts | 8 touch controls
+ */
+
+/* ------------------------------------------------------------------------------------------------------------------ 1. tokens */
+:root {
+  --ui-bg: #14141e;
+  --ui-bg2: #1c1c2c;
+  --ui-line: #35354f;
+  --ui-text: #dcdcea;
+  --ui-dim: #9c9cb8;
+  --ui-accent: #7858e8;
+  --ui-accent-hi: #98c8f8;
+  --ui-warn: #f0c870;
+  --su: calc(min(100vw, (100dvh - var(--menubar-h)) * 600 / 416) / 600);
+}
+@media (max-aspect-ratio: 1/1) {
+  :root { --su: calc(100vw / 600); }
+}
+@media (pointer: coarse) {
+  :root { --menubar-h: 40px; }
+}
+
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+:where(.btn, .menu-title, .menu-item, .key-picker, .tc, select, input[type="text"], input[type="checkbox"]):focus-visible {
+  outline: 2px solid var(--ui-accent-hi);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------------------------------------------------------ 2. menu bar */
+.menubar {
+  background: var(--ui-bg);
+  border-bottom: 1px solid var(--ui-line);
+  color: var(--ui-text);
+  font: 14px/1.2 system-ui, "Segoe UI", Roboto, sans-serif;
+  user-select: none; -webkit-user-select: none;
+}
+.menu-bar { display: flex; align-items: stretch; height: 100%; margin: 0; padding: 0 4px; list-style: none; }
+.menu { position: relative; display: flex; }
+.menu-title {
+  appearance: none; margin: 0; padding: 0 14px; border: 0; border-radius: 0;
+  background: none; color: inherit; font: inherit; cursor: default;
+}
+.menu-title:hover,
+.menu-title[aria-expanded="true"] { background: #2b2b44; }
+.menu-items {
+  position: absolute; left: 0; top: 100%; z-index: 31;
+  min-width: 16em; max-width: calc(100vw - 8px); max-height: calc(100dvh - var(--menubar-h) - 8px); overflow: auto;
+  margin: 0; padding: 4px 0; list-style: none;
+  background: var(--ui-bg2); border: 1px solid #44446a; box-shadow: 0 10px 28px #000b;
+}
+.menu-item {
+  appearance: none; position: relative; display: flex; align-items: center; justify-content: space-between; gap: 2em; width: 100%;
+  margin: 0; padding: 6px 16px 6px 30px; border: 0; background: none; color: var(--ui-text); font: inherit; text-align: left; cursor: default; white-space: nowrap;
+}
+.menu-item:hover:not(:disabled),
+.menu-item:focus-visible { background: #3a3470; outline: none; }
+.menu-item:disabled { color: #6c6c84; }
+.menu-item kbd { font: inherit; font-size: 12px; color: var(--ui-dim); }
+.menu-item[aria-checked="true"]::before {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--ui-accent-hi); line-height: 1;
+}
+.menu-item[role="menuitemcheckbox"][aria-checked="true"]::before { content: "\2713"; font-size: 14px; }
+.menu-item[role="menuitemradio"][aria-checked="true"]::before { content: "\25CF"; font-size: 9px; left: 13px; }
+.menu-sep { height: 1px; margin: 4px 0; background: var(--ui-line); }
+.menu-heading { padding: 6px 16px 2px 16px; color: var(--ui-dim); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+@media (pointer: coarse) {
+  .menu-title { padding: 0 18px; font-size: 15px; }
+  .menu-item { padding-top: 11px; padding-bottom: 11px; font-size: 15px; }
+}
+
+/* ------------------------------------------------------------------------------------------------------------------ 3. panel + status line */
+.panel > canvas { display: block; width: 100%; height: 100%; image-rendering: auto; }
+.panel-hud { display: none; }
+.status-line > span + span { margin-left: .9em; }
+.status-line .fps { color: var(--ui-accent-hi); }
+
+/* Phone held upright (narrow + portrait): the 600 x 416 stage would show a 228 px table, so the table takes the whole width and the scoreboard canvas is
+   replaced by a text HUD (player / ball / score / info / mission) under it. Space is reserved for the touch buttons (top row 72 px, pad 164 px) when shown.
+   Wider windows and landscape keep the original side-by-side stage. */
+@media (max-aspect-ratio: 1/1) and (max-width: 700px) {
+  :root { --hud-h: 96px; --touch-top: 0px; --touch-bottom: 0px; }
+  .app:has(#touch-controls:not([hidden])) { --touch-top: 72px; --touch-bottom: 164px; }
+  @media (pointer: coarse) { :root { --touch-top: 72px; --touch-bottom: 164px; } }
+  .stage-wrap { padding-top: var(--touch-top); padding-bottom: var(--touch-bottom); }
+  .stage {
+    aspect-ratio: 365 / 416; margin-bottom: var(--hud-h);
+    width: min(100%, calc((100dvh - var(--menubar-h) - var(--touch-top) - var(--touch-bottom) - var(--hud-h)) * 365 / 416));
+  }
+  .table-view, .pause-overlay { width: 100%; }
+  .panel { left: 0; top: 100%; width: 100%; height: var(--hud-h); }
+  .panel > canvas { display: none; }
+  .panel-hud {
+    display: flex; flex-direction: column; justify-content: center; gap: 2px; height: calc(100% - 8px); margin: 4px 0 0; padding: 4px 10px;
+    background: #05050c; border: 2px solid #3a3a52; border-radius: 6px; overflow: hidden;
+    font: 600 15px/1.25 system-ui, "Segoe UI", Roboto, sans-serif; color: #9aa4ff;
+  }
+  .hud-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .hud-head { color: #8a8fb8; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
+  .hud-score { font-size: 24px; font-variant-numeric: tabular-nums; letter-spacing: .06em; color: #c4ccff; }
+  .hud-info, .hud-mission { min-height: 1.25em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .hud-mission { color: #7f8cf0; font-weight: 500; font-size: 14px; white-space: normal; max-height: 2.5em; line-height: 1.25; }
+}
+
+/* ------------------------------------------------------------------------------------------------------------------ 4. buttons / forms */
+.btn {
+  appearance: none; margin: 0; padding: .5em 1.1em; min-height: 2.4em;
+  border: 1px solid #4c4c72; border-radius: .4em; background: #2a2a42; color: var(--ui-text);
+  font: inherit; cursor: pointer;
+}
+.btn:hover { background: #35355a; }
+.btn:active { background: #3f3f6a; }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn-primary { background: #4a3cb8; border-color: var(--ui-accent); color: #fff; }
+.btn-primary:hover { background: #5646cc; }
+.btn-big { min-height: 3em; padding: .6em 1.4em; font-size: 1.05em; }
+.btn-link { min-height: 0; padding: .35em .5em; border-color: transparent; background: none; color: var(--ui-accent-hi); text-decoration: underline; }
+.btn-link:hover { background: #ffffff10; }
+
+/* ------------------------------------------------------------------------------------------------------------------ 5. start overlay + pause veil */
+.start-overlay {
+  position: fixed; inset: var(--menubar-h) 0 0 0; z-index: 20;
+  display: grid; place-items: center; padding: 16px; overflow: auto;
+  background: rgba(2, 2, 14, .74);
+  font: clamp(14px, calc(var(--su) * 15), 19px)/1.4 system-ui, "Segoe UI", Roboto, sans-serif; color: var(--ui-text);
+}
+.start-card {
+  width: min(100%, 33em); margin: auto; padding: 1.4em 1.5em 1.2em; text-align: center;
+  background: linear-gradient(180deg, #1f1c3a, #12121f); border: 1px solid #4b3fa0; border-radius: .8em;
+  box-shadow: 0 1em 3em #000c, inset 0 0 0 1px #ffffff12;
+}
+.start-title { margin: 0 0 .35em; font-size: 1.65em; line-height: 1.15; color: #cfb3ee; text-shadow: 0 0 .7em #7858e8aa; }
+.start-lead { margin: 0 0 .8em; color: var(--ui-dim); }
+.start-consent { margin: 0 0 1em; padding: .6em .8em; border-radius: .4em; background: #0c0c18; border: 1px solid var(--ui-line); font-size: .86em; color: #c4c4da; }
+.start-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .6em 1.6em; margin: 0 0 1em; }
+.start-field { display: inline-flex; align-items: center; gap: .6em; }
+.start-select {
+  font: inherit; padding: .35em .5em; border: 1px solid #5a5a86; border-radius: .35em; background: #0d0d18; color: #fff;
+}
+.start-check { display: inline-flex; align-items: center; gap: .5em; cursor: pointer; }
+.start-check input { width: 1.15em; height: 1.15em; accent-color: var(--ui-accent); }
+.start-buttons { display: flex; flex-direction: column; gap: .6em; margin: 0 0 .6em; }
+.start-local { display: flex; flex-wrap: wrap; justify-content: center; gap: .2em .6em; margin: 0 0 .7em; }
+.start-status { margin: 0 0 .6em; font-size: .84em; color: var(--ui-accent-hi); }
+.start-keys { margin: 0; font-size: .78em; line-height: 1.5; color: var(--ui-dim); }
+
+/* short viewports (phones in landscape): shrink the card so everything fits without scrolling */
+@media (max-height: 520px) {
+  .start-overlay { padding: 8px 16px; }
+  .start-card { padding: .7em 1em .6em; }
+  .start-title { margin-bottom: .2em; font-size: 1.3em; }
+  .start-keys { display: none; }
+  .start-lead { margin-bottom: .5em; font-size: .86em; line-height: 1.3; }
+  .start-consent { margin-bottom: .6em; padding: .4em .6em; }
+  .start-row { margin-bottom: .6em; }
+  .start-buttons { flex-direction: row; margin-bottom: .3em; }
+  .start-buttons .btn { flex: 1 1 0; min-height: 2.6em; padding: .4em .6em; }
+  .start-local { margin-bottom: .2em; }
+  .start-status { margin-bottom: 0; }
+}
+
+.pause-overlay {
+  position: absolute; left: 0; top: 0; width: calc(365 / 600 * 100%); height: 100%; z-index: 12;
+  display: grid; place-items: center; pointer-events: none; background: rgba(0, 0, 12, .58);
+  font: clamp(13px, calc(var(--su) * 14), 18px)/1.35 system-ui, "Segoe UI", Roboto, sans-serif; color: var(--ui-text);
+}
+.pause-card {
+  pointer-events: auto; padding: 1em 1.4em 1.1em; text-align: center;
+  background: #15152a; border: 1px solid #4b3fa0; border-radius: .7em; box-shadow: 0 .6em 2em #000b;
+}
+.pause-title { margin: 0 0 .15em; font-size: 1.6em; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #cfb3ee; }
+.pause-hint { margin: 0 0 .8em; font-size: .85em; color: var(--ui-dim); }
+
+/* ------------------------------------------------------------------------------------------------------------------ 6. dialogs */
+.dialog-backdrop {
+  position: fixed; inset: 0; z-index: 40;
+  display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; padding: 16px; overflow: hidden;
+  background: rgba(2, 2, 12, .74);
+  font: clamp(14px, calc(var(--su) * 15), 18px)/1.4 system-ui, "Segoe UI", Roboto, sans-serif; color: var(--ui-text);
+}
+.dialog {
+  display: flex; flex-direction: column; width: min(100%, 30em); max-height: 100%; overflow: hidden;
+  background: var(--ui-bg2); border: 1px solid #4b3fa0; border-radius: .6em; box-shadow: 0 1em 3em #000d;
+}
+.dialog:focus { outline: none; }
+.dialog-small { width: min(100%, 25em); }
+.dialog-wide { width: min(100%, 38em); }
+.dialog-scores { width: min(100%, 32em); }
+.dialog-title {
+  margin: 0; padding: .65em 1em; font-size: 1.1em; font-weight: 600; color: #e6dcfa;
+  flex: none; background: linear-gradient(180deg, #2d2955, #211f3d); border-bottom: 1px solid #4b3fa0;
+}
+.dialog-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 1em; }
+.dialog-text { margin: 0 0 .7em; }
+.dialog-text:last-child { margin-bottom: 0; }
+.dialog-buttons { flex: none; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .6em; padding: .75em 1em; border-top: 1px solid var(--ui-line); }
+
+.hs-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.hs-table th { padding: .3em .5em; text-align: left; font-weight: 600; color: var(--ui-dim); border-bottom: 1px solid var(--ui-line); }
+.hs-table td { padding: .45em .5em; border-bottom: 1px solid #ffffff12; overflow-wrap: anywhere; }
+.hs-table th:last-child,
+.hs-table .hs-score { text-align: right; white-space: nowrap; }
+.hs-rank { width: 3.2em; color: var(--ui-dim); }
+
+.name-input {
+  box-sizing: border-box; width: 100%; padding: .5em .6em;
+  font: inherit; color: #fff; background: #0d0d18; border: 1px solid #6a58c8; border-radius: .35em;
+}
+
+.controls-group { margin: 0 0 .9em; padding: .5em .9em .8em; border: 1px solid var(--ui-line); border-radius: .4em; }
+.controls-group legend { padding: 0 .4em; color: var(--ui-accent-hi); }
+.controls-row { display: flex; align-items: center; justify-content: space-between; gap: 1em; padding: .25em 0; }
+.key-picker {
+  appearance: none; min-width: 8.5em; padding: .4em .8em; font: inherit; text-align: center; cursor: pointer;
+  color: #fff; background: #0d0d18; border: 1px solid #5a5a86; border-radius: .35em;
+}
+.key-picker:hover { border-color: var(--ui-accent-hi); }
+.key-picker.is-armed { border-color: var(--ui-warn); color: var(--ui-warn); box-shadow: 0 0 0 2px #f0c87040; }
+.controls-defaults { margin: .6em 0 0; }
+.controls-hint { min-height: 1.4em; margin: .5em 0 0; color: var(--ui-warn); font-size: .9em; }
+.sound-dlg-status { margin: 0 0 .5em; color: var(--ui-accent-hi); font-weight: 600; }
+.sound-progress { display: block; width: 100%; height: .7em; margin: 0 0 .8em; accent-color: var(--ui-accent); }
+.sound-volume-row { display: flex; align-items: center; gap: .8em; margin: .4em 0 1em; }
+.sound-volume { flex: 1 1 auto; min-width: 0; accent-color: var(--ui-accent); }
+.sound-volume-text { min-width: 3em; text-align: right; font-variant-numeric: tabular-nums; color: var(--ui-dim); }
+.sound-dlg-note { font-size: .85em; color: var(--ui-dim); }
+.sound-dlg-buttons { display: flex; flex-wrap: wrap; gap: .6em; }
+.help-section { margin: 0 0 .8em; }
+.help-heading { margin: 0 0 .25em; font-size: 1em; color: var(--ui-accent-hi); }
+@media (max-height: 520px) {
+  .dialog-backdrop { padding: 8px 16px; }
+  .dialog-title { padding: .45em 1em; }
+  .dialog-buttons { padding: .5em 1em; }
+}
+
+/* ------------------------------------------------------------------------------------------------------------------ 7. toasts */
+.toast-root {
+  top: calc(var(--menubar-h) + 12px); bottom: auto;
+  display: flex; flex-direction: column; align-items: center; gap: .5em; width: max-content; max-width: calc(100vw - 32px);
+}
+.toast {
+  padding: .55em 1.1em; border: 1px solid var(--ui-accent); border-radius: 999px;
+  background: rgba(30, 28, 70, .95); color: #fff; font: 15px/1.3 system-ui, "Segoe UI", Roboto, sans-serif; text-align: center;
+  box-shadow: 0 6px 18px #000a; animation: toast-in .18s ease-out; transition: opacity .3s;
+}
+.toast-out { opacity: 0; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* ------------------------------------------------------------------------------------------------------------------ 8. touch controls */
+/* The container covers the viewport but lets taps through; only the buttons catch pointers. Portrait: app buttons in the free band above the
+   stage, game buttons in three columns below it. Landscape: columns in the black side margins. Every button is at least 56 px wide. */
+.touch-controls { position: fixed; inset: 0; z-index: 15; pointer-events: none; font: 600 13px/1.1 system-ui, "Segoe UI", Roboto, sans-serif; }
+.tc-group { display: flex; gap: 8px; }
+.tc {
+  pointer-events: auto; appearance: none; min-width: 56px; min-height: 56px; margin: 0; padding: 4px 6px;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  color: #ece8ff; background: rgba(38, 34, 88, .8); border: 2px solid rgba(152, 200, 248, .55); border-radius: 16px;
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+}
+.tc-label { pointer-events: none; }
+.tc.is-down,
+.tc:active { background: rgba(120, 88, 232, .92); border-color: #fff; transform: scale(.96); }
+.tc-big { min-height: 88px; font-size: 15px; }
+
+/* portrait (default) */
+.tc-app {
+  position: fixed; left: 16px; right: 16px; top: calc(var(--menubar-h) + 8px); justify-content: center;
+}
+.tc-app .tc { flex: 1 1 0; max-width: 130px; }
+.tc-pad {
+  position: fixed; left: 16px; right: 16px; bottom: max(12px, env(safe-area-inset-bottom));
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: end;
+}
+.tc-pad .tc-group { flex-direction: column; }
+.tc-pad .tc { width: 100%; }
+
+@media (orientation: landscape) {
+  .tc-app {
+    left: max(8px, env(safe-area-inset-left)); right: auto; top: calc(var(--menubar-h) + 8px); width: 72px; flex-direction: column;
+  }
+  .tc-app .tc { flex: 0 0 auto; max-width: none; min-height: 48px; width: 100%; }
+  .tc-pad { display: contents; }
+  .tc-pad .tc-group { position: fixed; width: 72px; }
+  .tc-left { left: max(8px, env(safe-area-inset-left)); bottom: 8px; }
+  .tc-right { right: max(8px, env(safe-area-inset-right)); bottom: 8px; }
+  .tc-mid { right: max(8px, env(safe-area-inset-right)); top: calc(var(--menubar-h) + 8px); }
+}
+
+/* ------------------------------------------------------------------------------------------------------------------ motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; transition: none; }
+  .tc.is-down, .tc:active { transform: none; }
+}

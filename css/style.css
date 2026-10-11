@@ -1,0 +1,47 @@
+/*
+ * css/style.css - OWNER: INTEGRATOR   STATUS: IMPLEMENTED (page + stage geometry; contract = ARCHITECTURE.md 8.1)
+ * Verified in a real browser at 1456x819, 667x375 (phone landscape) and 375x667 (phone portrait): no horizontal scroll, controls never overlap the stage.
+ * Owns: reset, page layout, the 600x416 stage and the percentage rectangles of the table view and the panel.
+ * Does NOT style menus, panel contents, dialogs, overlay, toast or touch buttons: those live in css/ui.css (UI role).
+ * Percentages = original pixels / 600 (x) or / 416 (y): table 0,0 365x416 ; panel 386,12 203x394 (SPEC 6.1, P1).
+ */
+:root {
+  --menubar-h: 28px;
+  --stage-aspect: 600 / 416;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; color: #d8d8e0; overflow: hidden; overscroll-behavior: none; touch-action: manipulation; }
+body { font: 14px/1.35 system-ui, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+
+.app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; background: #000; }
+.menubar { flex: 0 0 var(--menubar-h); min-height: var(--menubar-h); position: relative; z-index: 30; }
+.stage-wrap { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; position: relative; overflow: hidden; }
+
+/* uniform scale of the 600x416 virtual screen, letter-boxed in black */
+.stage {
+  position: relative;
+  aspect-ratio: var(--stage-aspect);
+  width: min(100%, calc((100vh - var(--menubar-h)) * 600 / 416));
+  width: min(100%, calc((100dvh - var(--menubar-h)) * 600 / 416));
+  background: #000;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; overscroll-behavior: none;
+}
+.table-view { position: absolute; left: 0; top: 0; width: calc(365 / 600 * 100%); height: 100%; overflow: hidden; }
+.table-view > canvas { display: block; width: 100%; height: 100%; outline: none; }
+.panel { position: absolute; left: calc(386 / 600 * 100%); top: calc(12 / 416 * 100%); width: calc(203 / 600 * 100%); height: calc(394 / 416 * 100%); }
+
+/* overlays live on top of the whole stage */
+.start-overlay, .touch-controls, .status-line { position: absolute; }
+.start-overlay { inset: 0; z-index: 20; }
+.touch-controls { inset: auto 0 0 0; z-index: 15; }
+.status-line { left: 6px; bottom: 4px; z-index: 10; font-size: 11px; opacity: 0.7; pointer-events: none; }
+.dialog-root { position: fixed; inset: 0; z-index: 40; pointer-events: none; }
+.dialog-root > * { pointer-events: auto; }
+.toast-root { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 50; pointer-events: none; }
+[hidden] { display: none !important; }
+
+/* narrow portrait screens: stage fills the width, controls sit below it */
+@media (max-aspect-ratio: 1/1) {
+  .stage { width: 100%; }
+}

@@ -1,0 +1,13 @@
+# Private: dev/QA scratch output (contains headless Chrome profiles) and the research notes / extracted data
+dev/
+research/
+
+# Original game sound files dropped in locally (copyrighted, never committed)
+sounds/*
+!sounds/README.txt
+
+# Local tooling
+.claude/
+__pycache__/
+*.pyc
+node_modules/

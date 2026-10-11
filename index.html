@@ -1,0 +1,58 @@
+<!doctype html>
+<!--
+  index.html - OWNER: INTEGRATOR   STATUS: IMPLEMENTED (skeleton; contract = ARCHITECTURE.md 8.1)
+  Mount points only. The UI role fills #menubar, #panel, #touch-controls, #start-overlay, #status-line, #dialog-root and #toast-root
+  from src/ui/index.js; main.js appends the renderer canvas to #table-view. Ids and structure are a frozen contract.
+  Serve with:  python -m http.server 8765   (from this folder)  ->  http://127.0.0.1:8765/
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#000000">
+  <title>Star Cadet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/ui.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app" class="app">
+    <!-- UI fills: <ul class="menu-bar"> Game / Options / Help (ARCHITECTURE.md 8.2) -->
+    <nav id="menubar" class="menubar" aria-label="Game menu"></nav>
+
+    <main id="stage-wrap" class="stage-wrap">
+      <!-- The 600x416 virtual screen of the original (SPEC 6.1). INTEGRATOR sizes it (css/style.css); children are positioned in % of it. -->
+      <div id="stage" class="stage">
+        <!-- main.js appends the Three.js canvas here (365:416 area at the left of the stage) -->
+        <div id="table-view" class="table-view"></div>
+        <!-- UI fills: <canvas id="panel-canvas" width="203" height="394"> + visually-hidden live region #panel-aria -->
+        <aside id="panel" class="panel" aria-label="Scoreboard"></aside>
+        <!-- UI fills: buttons with [data-action] (touch devices only; see 8.7) -->
+        <div id="touch-controls" class="touch-controls" hidden></div>
+        <!-- UI fills: start / sound-consent card (SPEC 6.7) -->
+        <div id="start-overlay" class="overlay start-overlay" hidden></div>
+        <!-- UI fills: "sound: ..." status text and optional fps -->
+        <div id="status-line" class="status-line" aria-live="polite"></div>
+      </div>
+    </main>
+
+    <!-- UI fills: modal dialogs (high scores, name entry, controls, about, help) -->
+    <div id="dialog-root" class="dialog-root"></div>
+    <!-- UI fills: transient messages -->
+    <div id="toast-root" class="toast-root" aria-live="polite"></div>
+  </div>
+  <noscript>This game needs JavaScript (ES modules) to run.</noscript>
+  <!-- only browsers WITHOUT ES module support run this: tell them instead of showing an empty page -->
+  <script nomodule>document.body.insertAdjacentHTML('beforeend', '<p style="position:fixed;inset:0;display:grid;place-items:center;margin:0;padding:16px;background:#000;color:#d8d8e0;font:16px system-ui,sans-serif;text-align:center">This game needs a current browser with ES module support (Chrome, Edge, Firefox or Safari).</p>');</script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

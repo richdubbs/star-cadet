@@ -1,0 +1,16 @@
+{
+  "name": "star-cadet",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Star Cadet: a 3D browser pinball game (unofficial fan project). Plain ES modules, Three.js 0.160.0 via import map, no build step.",
+  "scripts": {
+    "start": "python -m http.server 8765 --bind 127.0.0.1",
+    "test": "node --test \"tests/**/*.test.mjs\"",
+    "test:arch": "node --test tests/arch.test.mjs",
+    "test:strict": "node tests/arch_strict.mjs",
+    "test:input": "node --test tests/input.test.mjs",
+    "test:integration": "node --test tests/integration.test.mjs"
+  }
+}
