@@ -11,3 +11,7 @@ sounds/*
 __pycache__/
 *.pyc
 node_modules/
+
+# Desktop build output
+desktop/.cache/
+desktop/dist/

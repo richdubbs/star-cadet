@@ -11,7 +11,16 @@ Not affiliated with, endorsed by or sponsored by Microsoft, Cinematronics or Max
 
 Plain JavaScript ES modules, Three.js **0.160.0** through an import map (loaded from the jsDelivr CDN), **no build step, no npm dependencies**.
 
-## Run
+## Play
+
+* **In your browser:** <https://richdubbs.github.io/star-cadet/>
+* **Windows app:** download `StarCadet.exe` from the [latest release](https://github.com/richdubbs/star-cadet/releases/latest) and run it
+  (Windows 10 / 11; it opens the game in its own Microsoft Edge window and works offline). The exe is not code-signed, so Windows SmartScreen may
+  warn on first launch: choose *More info > Run anyway*. To use your own copies of the original sounds, put them in a `sounds` folder next to the exe.
+  Build it yourself with `node desktop/build.mjs` (needs Node and npm; it fetches three.js 0.160.0 from npm and compiles `desktop/StarCadet.cs` with the
+  C# compiler that ships with Windows).
+
+## Run from source
 
 ```
 python -m http.server 8765 --bind 127.0.0.1        (or: npm start)
