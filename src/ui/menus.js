@@ -9,7 +9,8 @@
  *   <ul class="menu-bar" role="menubar"><li class="menu" data-menu="game" role="none"><button class="menu-title" ...>Game</button>
  *     <ul class="menu-items" role="menu" hidden><li role="none"><button class="menu-item" role="menuitem" data-cmd="newGame">...
  * Items, shortcut hints (display only: input.js owns all shortcuts), data-cmd/data-value and states are MENU_MODEL below.
- * Checkboxes (Demo, Full Screen, Sounds, Music) use role=menuitemcheckbox + aria-checked; Select Players and Camera use role=menuitemradio.
+ * Checkboxes (Demo, Full Screen, Sounds, Music, Cinematic Camera, Mouse Rotates View) use role=menuitemcheckbox + aria-checked; Select Players and
+ * Camera use role=menuitemradio.
  * Behaviour: click opens/closes; while one menu is open, hovering another title switches to it; Escape / outside click / Tab close;
  * ArrowLeft/Right move between menus, ArrowUp/Down/Home/End between items, Enter/Space activate. Handled keys call stopPropagation so the
  * global game shortcuts do not also fire while the keyboard is driving the menu (Enter would otherwise also be "Launch Ball").
@@ -64,6 +65,9 @@ export const MENU_MODEL = Object.freeze([
       { cmd: 'camera', value: 'original', label: 'Original', key: 'V', type: 'radio' },
       { cmd: 'camera', value: 'top', label: 'Top', type: 'radio' },
       { cmd: 'camera', value: 'orbit', label: 'Orbit', type: 'radio' },
+      { cmd: 'cinematic', label: 'Cinematic Camera', key: 'C', type: 'checkbox' },
+      { cmd: 'mouseLook', label: 'Mouse Rotates View', type: 'checkbox' },
+      { cmd: 'resetView', label: 'Reset View' },
       { sep: true },
       { cmd: 'loadSounds', label: 'Load My Sounds (Folder)...' },
       { cmd: 'loadSoundsZip', label: 'Load My Sounds (Zip)...' },
@@ -107,6 +111,9 @@ export function computeMenuState(options, view) {
     loadSounds: { enabled: true },
     loadSoundsZip: { enabled: true },
     controls: { enabled: true },
+    cinematic: { enabled: true, checked: Boolean(o.cinematic) },
+    mouseLook: { enabled: true, checked: Boolean(o.mouseLook) },
+    resetView: { enabled: true },
     help: { enabled: true },
     about: { enabled: true },
   };
@@ -231,6 +238,9 @@ export function createMenus(opts) {
       case 'sounds': callAction(actions, 'setSounds', !options.sounds); break;
       case 'music': callAction(actions, 'setMusic', !options.music); break;
       case 'camera': callAction(actions, 'setCamera', spec.value); break;
+      case 'cinematic': callAction(actions, 'setCinematic', !options.cinematic); break;
+      case 'mouseLook': callAction(actions, 'setMouseLook', !options.mouseLook); break;
+      case 'resetView': callAction(actions, 'resetView'); break;
       case 'loadSounds': if (picker) picker.pickFolder(); break;
       case 'loadSoundsZip': if (picker) picker.pickFiles(); break;
       case 'soundDialog': if (local.sound) local.sound(); break;

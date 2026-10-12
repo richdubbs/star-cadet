@@ -14,6 +14,9 @@
  *   4. lamps.advance(dt)                                (lamp timers; lamp hooks call back into rules)
  * Paused => advance() runs no steps at all (rendering and UI keep running). A step that throws clears the accumulator (no backlog snowball) and rethrows.
  *
+ * Observer (additive): opts.onPhysicsEvents(events) sees every drained batch AFTER the rules handled it (main.js feeds the cinematic camera with it);
+ * it must not command the simulation, and an exception in it is reported once and otherwise ignored (the step itself never fails because of it).
+ *
  * Presentation only: buildRenderFrame() blends every ball between its position before the last step and after it by the fraction of a step still
  * waiting in the accumulator, so 144/165 Hz displays and jittery 60 Hz frames move smoothly although the simulation ticks at 120 Hz. Physics,
  * rules and lamps never see the blended values (snapshot() is refilled from the engine on every call).
@@ -37,6 +40,8 @@ export function createGame(opts = {}) {
   const lamps = (f.createLamps || createLamps)({ rand, data });
   const rules = (f.createRules || createRules)({ physics, lamps, sound, rand, highScores: opts.highScores, data });
 
+  const tap = typeof opts.onPhysicsEvents === 'function' ? opts.onPhysicsEvents : null;
+  let tapFailed = false;
   const DT = data.PHYS.dt;
   const MAX_FRAME = data.PHYS.maxFrameDt;
   let acc = 0;
@@ -72,7 +77,11 @@ export function createGame(opts = {}) {
   function stepOnce() {
     recordPrev();
     physics.step(DT);
-    rules.onPhysicsEvents(physics.drainEvents());
+    const events = physics.drainEvents();
+    rules.onPhysicsEvents(events);
+    if (tap && events.length) {
+      try { tap(events); } catch (err) { if (!tapFailed) { tapFailed = true; console.error('[game] onPhysicsEvents observer failed', err); } }
+    }
     rules.tick(DT);
     lamps.advance(DT);
     time += DT;

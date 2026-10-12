@@ -80,25 +80,7 @@ export function buildTable(o) {
     mesh(toGeometry(b.build()), kit.floor, { receive: true, name: 'floor' });
   }
 
-  // =============================================================================================================================================
-  // 2. cabinet walls (1.6 high, OUTSIDE the playfield rectangle)
-  // =============================================================================================================================================
-  {
-    const t = 0.55, h = H.cabinetWall;
-    const rects = [
-      [[8, -14.55], [8 + t, -14.55], [8 + t, 15.55], [8, 15.55]],
-      [[-8 - t, -14.55], [-8, -14.55], [-8, 15.55], [-8 - t, 15.55]],
-      [[-8 - t, -14.55], [8 + t, -14.55], [8 + t, -14], [-8 - t, -14]],
-      [[-8 - t, 15], [8 + t, 15], [8 + t, 15.55], [-8 - t, 15.55]],
-    ];
-    const sides = [], tops = [];
-    for (const rc of rects) {
-      const p = extrudePolygonParts(rc, -0.2, h, { uv: (x, y, kind, s, z) => (kind === 'side' ? [s * 0.4, z * 0.4] : [x * 0.1, y * 0.1]), smooth: false });
-      sides.push(p.side); tops.push(p.top);
-    }
-    mesh(toGeometry(mergeMeshData(sides)), kit.wallMetal, { name: 'cabinet', receive: true });
-    mesh(toGeometry(mergeMeshData(tops)), kit.steelDark, { name: 'cabinetTop' });
-  }
+  // 2. the cabinet walls around the playfield are part of the cabinet (cabinet.js)
 
   // =============================================================================================================================================
   // 3. island walls: dark metal body, red band under a silver top (rails); rubbers; slingshot bodies; rebounders (dynamic)

@@ -9,7 +9,10 @@
  * half-float target) is optional; without WebGL a Renderer whose canvas shows "WebGL is not available" is returned (never throws).
  *
  * Renderer surface (types.js): domElement, resize(cssW, cssH, dpr), render(frame), setCameraMode, getCameraMode, cycleCameraMode, pickTable,
- * setQuality, info, dispose. Extra (additive): `debug` = {scene, THREE, table, lamps, balls, cameras, kit} for the browser smoke tests.
+ * setQuality, info, dispose. Extra (additive): setMouseLook(on) / resetView() / getView() / setView(v) (mouse view of the original camera),
+ * frame.cinematic (the cinematic camera's state, render/cinematic.js) and
+ * `debug` = {scene, THREE, table, lamps, balls, cameras, cabinet, kit} for the browser smoke tests. The arcade cabinet and its room (cabinet.js)
+ * surround the table; scene fog hides the far edge of the room.
  *
  * ASSUMPTIONS:
  *  - frame.dt is the frame time in seconds (clamped to 0.1 s); animation easing uses it, never the wall clock.
@@ -27,6 +30,7 @@ import { buildTable } from './table.js';
 import { createLampOverlay } from './lamps_overlay.js';
 import { createBalls } from './balls.js';
 import { createCameras } from './cameras.js';
+import { buildCabinet } from './cabinet.js';
 import { clamp, approach } from './convert.js';
 
 const MODES = ['original', 'top', 'orbit'];
@@ -104,6 +108,9 @@ export function createRenderer(opts) {
   scene.add(lamps.root);
   const balls = createBalls({ data, kit });
   scene.add(balls.root);
+  const cabinet = buildCabinet({ data, art, kit });
+  scene.add(cabinet.root);
+  scene.fog = new THREE.Fog(0x000000, 70, 190);                 // the room fades out (the table itself is always nearer than 70)
   const cameras = createCameras({ domElement: canvas });
 
   // ---- lights (intensities are "x pi" because three r160 lights are in physical units: pi == full albedo) ------------------------------------------
@@ -183,11 +190,13 @@ export function createRenderer(opts) {
     // tilt dimming
     const target = frame.physics.tiltLocked ? 0.55 : 1;
     dim = approach(dim, target, dt, 0.12);
-    hemi.intensity = baseLights.hemi * dim; key.intensity = baseLights.key * dim; fill.intensity = baseLights.fill * dim;
+    const cineFill = 1 + 0.15 * (frame.cinematic ? frame.cinematic.weight || 0 : 0);  // close-ups: lift the shadows under ramps a little
+    hemi.intensity = baseLights.hemi * dim * cineFill; key.intensity = baseLights.key * dim; fill.intensity = baseLights.fill * dim;
     table.update(frame, dt);
+    cabinet.update(frame, dt, dim);
     lamps.update(frame.lamps);
     balls.update(frame.physics.balls, dt, frame.physics.plunger);
-    cameras.update(frame.physics.shake);
+    cameras.update(frame.physics.shake, frame.cinematic, dt);
     const cam = cameras.active();
     renderer.info.reset();
     if (composer && quality.bloom) {
@@ -222,6 +231,11 @@ export function createRenderer(opts) {
     resize(w, h, dpr) { lastDpr = dpr || 1; resize(w, h, lastDpr); },
     render,
     setCameraMode(m) { cameras.setMode(m); },
+    // ---- additive: mouse view, cinematic camera, cabinet ----
+    setMouseLook(on) { cameras.setMouseLook(on); },
+    resetView() { cameras.resetView(); },
+    getView() { return cameras.getView(); },
+    setView(v) { cameras.setView(v); },
     getCameraMode() { return /** @type {any} */ (cameras.mode); },
     cycleCameraMode() { const next = MODES[(MODES.indexOf(cameras.mode) + 1) % MODES.length]; cameras.setMode(next); return /** @type {any} */ (next); },
     pickTable,
@@ -244,11 +258,11 @@ export function createRenderer(opts) {
       canvas.removeEventListener('webglcontextrestored', onRestored);
       disposeComposer();
       cameras.dispose();
-      balls.dispose(); lamps.dispose(); table.dispose(); kit.dispose();
+      balls.dispose(); lamps.dispose(); table.dispose(); cabinet.dispose(); kit.dispose();
       renderer.dispose();
       try { renderer.forceContextLoss(); } catch (e) { /* ignore */ }
     },
-    debug: { THREE, scene, renderer, table, lamps, balls, cameras, kit, lights: { hemi, key, fill } },
+    debug: { THREE, scene, renderer, table, lamps, balls, cameras, cabinet, kit, lights: { hemi, key, fill } },
   };
   return /** @type {any} */ (api);
 }

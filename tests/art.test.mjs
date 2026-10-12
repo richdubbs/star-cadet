@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 import * as data from '../src/data/index.js';
 import { paintAll } from '../src/render/art/index.js';
+import { paintCabinet, CABINET_SIZES, CABINET_KEYS } from '../src/render/art/cabinet.js';
 import { mulberry32 } from '../src/render/art/rng.js';
 import {
   FLOOR_RECT, DECK_RECT, patchPx, pxToTable, patchUV, patchScale, patchHeight, lampCellUV,
@@ -135,7 +136,14 @@ test('tableSpace matches mapping.patchPx (transform matrix and px()/py())', () =
 // ---------------------------------------------------------------------------------------------------------------------------------
 test('paintAll: full ArtPack shape (quality low) inside the strict canvas subset', () => {
   const { pack } = shared;
-  assert.deepEqual(Object.keys(pack).sort(), ['deck', 'floor', 'lampAtlas', 'misc', 'panel']);
+  assert.deepEqual(Object.keys(pack).sort(), ['cabinet', 'deck', 'floor', 'lampAtlas', 'misc', 'panel']);
+  // cabinet (additive): exact keys and the sizes of CABINET_SIZES.low
+  assert.deepEqual(Object.keys(pack.cabinet).sort(), [...CABINET_KEYS].sort());
+  for (const [k, [w, h]] of Object.entries(CABINET_SIZES.low)) {
+    assert.equal(pack.cabinet[k].width, w, k);
+    assert.equal(pack.cabinet[k].height, h, k);
+    assert.ok(pack.cabinet[k].ops.length > 5, `${k} drew something`);
+  }
   // floor
   assert.equal(pack.floor.width, 1024);
   assert.equal(pack.floor.height, Math.round((1024 * 29) / 16));
@@ -650,4 +658,22 @@ test('labels: the deck label is VISIBLE from the original camera (not covered by
       }
     }
   }
+});
+
+test('cabinet art: every quality has every key; deterministic for a seed; only the allowed canvas subset (strict)', () => {
+  for (const q of ['low', 'normal', 'high']) assert.deepEqual(Object.keys(CABINET_SIZES[q]).sort(), [...CABINET_KEYS].sort(), q);
+  const once = () => {
+    const f = createFakeCanvasFactory({ strict: true });
+    return paintCabinet(data, f.createCanvas, mulberry32(7), 'normal');
+  };
+  const a = once(), b = once();
+  for (const k of CABINET_KEYS) {
+    assert.equal(a[k].width, CABINET_SIZES.normal[k][0], k);
+    assert.equal(opsDigest(a[k]), opsDigest(b[k]), `${k} deterministic`);
+  }
+  assert.notEqual(opsDigest(a.sideL), opsDigest(a.sideR), 'left and right panels are mirrored, not copies');
+  assert.notEqual(opsDigest(a.sideL), opsDigest(a.boxSide));
+  // an unknown quality falls back to normal
+  const f = createFakeCanvasFactory({ strict: true });
+  assert.equal(paintCabinet(data, f.createCanvas, mulberry32(1), 'bogus').backglass.width, CABINET_SIZES.normal.backglass[0]);
 });

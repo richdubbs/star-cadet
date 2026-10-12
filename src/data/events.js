@@ -38,6 +38,8 @@ export const EV = Object.freeze({
   PLUNGER_RELEASE: 'plungerRelease',       // {boost, hitBall}
   STUCK_RELAUNCH: 'stuckRelaunch',         // {}                        stuck ball removed + relaunched by physics
   FLIPPER: 'flipper',                      // {side, action, byKey}     'extend' | 'retract'
+  FLIPPER_HIT: 'flipperHit',               // {side, ballId, speed}     an EXTENDING flipper struck a ball (front side, boost > 0); speed = ball speed after
+                                           //                           the hit; at most one per flipper per step (presentation only: the cinematic camera)
   NUDGE: 'nudge',                          // {dir}
   NUDGE_COUNT: 'nudgeCount',               // {level, count}            level 'warn' (count>0.5) | 'tilt' (count>1.0); once per crossing
   DEMO_TRIGGER: 'demoTrigger',             // {id: 1400..1404}

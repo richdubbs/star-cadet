@@ -52,12 +52,22 @@ the scoreboard becomes a text strip (player / ball / score / messages) under it;
 | Player Controls dialog | `F8` |
 | Help | `F1` |
 | Camera: original / top / orbit | `V` |
+| Cinematic camera on / off | `C` |
 
-Mouse over the table: left button = left flipper, right button = right flipper, middle button = plunger. Touch: left half of the table = left flipper,
+Mouse over the table (*Options > Mouse Rotates View*, on by default): drag with the left button to turn the view round the arcade cabinet, wheel to
+zoom, double-click (or *Options > Reset View*) for the normal view again. The view never changes the game. With the option off the mouse works the
+table instead: left button = left flipper, right button = right flipper, middle button = plunger. Touch: left half of the table = left flipper,
 right half = right flipper, plus the on-screen buttons (touch devices, or `?touch=1`). Key repeat is ignored. Gameplay keys are ignored while paused,
 while tilted flippers are dead, and input is blocked in demo mode. Opening a menu or a dialog during a game pauses it; leaving the window pauses it too
 (resume with `F3` or the Resume button; the attract mode `?demo` is the exception: it carries on by itself when its tab is visible again).
 Keys are physical positions, so `Z` / `X` are also answered by the key *labelled* Z / X on QWERTZ, AZERTY and Dvorak keyboards.
+
+**Cinematic camera** (*Options > Cinematic Camera*, `C`, off by default): when a flipper strikes the ball the camera zooms in on it and follows it while
+the game runs in slow motion (70 % speed) for a moment or two. Every score while it follows extends the shot (up to 7 s); it lets go early when the
+ball comes back down towards the flippers, so they are in view again.
+
+The table stands in a full **arcade cabinet** (side art, backbox with backglass and an amber dot-matrix score display, coin door, shooter rod, flipper
+buttons, legs, a dark arcade room): turn the view with the mouse to see it. The flipper buttons and the shooter rod move with the game.
 
 Nudge too often and the table **tilts**. A hold of the plunger of about 2.5 s is full power; a quick tap does not get the ball out of the lane.
 
@@ -67,7 +77,7 @@ Typed cheat words (during play, like the original): `gmax`, `1max`, `bmax`, `rma
 
 ### URL flags (all optional)
 
-`?demo` start in attract mode (with a remembered sound consent the files load at once and the sound starts at your first click or key, as browsers require) | `?seed=7` seeded random numbers (reproducible runs) | `?camera=original|top|orbit` | `?nosound` | `?quality=low|high`
+`?cinematic=1` cinematic camera on (`0` off) | `?demo` start in attract mode (with a remembered sound consent the files load at once and the sound starts at your first click or key, as browsers require) | `?seed=7` seeded random numbers (reproducible runs) | `?camera=original|top|orbit` | `?nosound` | `?quality=low|high`
 (low = no shadows / bloom, smaller textures) | `?touch=1` force the on-screen buttons | `?debug=1` debug mode. The debug handle `window.__pinball`
 exposes `game, physics, lamps, rules, audio, ui, renderer, input, data, store, art, actions`.
 

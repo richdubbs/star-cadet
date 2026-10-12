@@ -7,7 +7,7 @@
  * every painter gets its own mulberry32 stream derived from the seed, so the same seed gives identical drawing operations and changing one
  * painter never shifts the random numbers of another.
  * ASSUMPTIONS: quality 'high' / 'normal' / 'low' = floor width 2048 / 1536 / 1024 px, deck width = floor width / 2, lamp cells 128 px (64 px at 'low');
- * an unknown quality string falls back to 'normal'.
+ * an unknown quality string falls back to 'normal'. `cabinet` (additive) = the arcade cabinet textures of cabinet.js (CABINET_SIZES per quality).
  */
 import { mulberry32 } from './rng.js';
 import { paintFloor } from './floor.js';
@@ -15,6 +15,7 @@ import { paintDeck } from './deck.js';
 import { buildLampAtlas } from './lamps.js';
 import { paintPanel } from './panel.js';
 import { paintMisc } from './misc.js';
+import { paintCabinet } from './cabinet.js';
 
 const FLOOR_WIDTH = { high: 2048, normal: 1536, low: 1024 };
 const CELL_PX = { high: 128, normal: 128, low: 64 };
@@ -36,5 +37,6 @@ export function paintAll(data, opts) {
     lampAtlas: buildLampAtlas(data, opts.createCanvas, stream(2), CELL_PX[quality]),
     misc: paintMisc(data, opts.createCanvas, stream(3)),
     panel: paintPanel(data, opts.createCanvas, stream(4)),
+    cabinet: paintCabinet(data, opts.createCanvas, stream(5), quality),
   };
 }

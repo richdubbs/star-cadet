@@ -257,6 +257,7 @@ export {};
  *  {type:'plungerRelease', t:number, boost:number, hitBall:boolean} |
  *  {type:'stuckRelaunch', t:number} |
  *  {type:'flipper', t:number, side:Side, action:'extend'|'retract', byKey:boolean} |
+ *  {type:'flipperHit', t:number, side:Side, ballId:number, speed:number} |         ADDITIVE: an extending flipper struck a ball (cinematic camera)
  *  {type:'nudge', t:number, dir:'left'|'right'|'bottom'} |
  *  {type:'nudgeCount', t:number, level:'warn'|'tilt', count:number} |
  *  {type:'demoTrigger', t:number, id:1400|1401|1402|1403|1404}
@@ -504,6 +505,7 @@ export {};
  * @property {LampAtlas} lampAtlas
  * @property {Record<string, CanvasLike>} misc         named small textures - exact key list in ARCHITECTURE.md 9.3; RENDER must tolerate missing keys
  * @property {CanvasLike} panel                        203x394 static panel (bezel, 3 black boxes, ORIGINAL logo, 'BALL' label); UI draws dynamic dots on top
+ * @property {Record<string, CanvasLike>} [cabinet]    ADDITIVE (ART): the arcade cabinet's panels (art/cabinet.js CABINET_KEYS); RENDER tolerates missing keys
  */
 /**
  * @typedef {Object} PaintOpts                         paintAll(data, opts)
@@ -515,6 +517,8 @@ export {};
  * @typedef {Object} RenderFrame                       built each frame by game.buildRenderFrame()
  * @property {number} time @property {number} dt       seconds (game clock / frame dt)
  * @property {PhysicsSnapshot} physics @property {LampsView} lamps @property {RulesView} rules
+ * @property {{weight:number, active:boolean, ballId:number|null, target:{x:number,y:number,z:number}, speed:number, lead:{x:number,y:number}}} [cinematic]
+ *           ADDITIVE: the cinematic camera director's state (render/cinematic.js), set by main.js; absent = no cinematic blend
  */
 /**
  * @typedef {Object} CreateRendererOpts
@@ -532,7 +536,10 @@ export {};
  * @property {(q:{shadows?:boolean, bloom?:boolean, dprMax?:number})=>void} setQuality
  * @property {()=>{drawCalls:number, triangles:number, textures:number}} info
  * @property {()=>void} dispose
- * @property {object} [debug]                           ADDITIVE (RENDER): {scene, THREE, renderer, table, lamps, balls, cameras, kit, lights} for browser smoke tests (absent on the fallback renderers)
+ * @property {object} [debug]                           ADDITIVE (RENDER): {scene, THREE, renderer, table, lamps, balls, cameras, cabinet, kit, lights} for browser smoke tests (absent on the fallback renderers)
+ * @property {(on:boolean)=>void} [setMouseLook]        ADDITIVE (RENDER): the mouse turns / zooms the original camera (drag, wheel, double-click resets)
+ * @property {()=>void} [resetView]                     ADDITIVE (RENDER): back to the original view (and the orbit camera to its start)
+ * @property {()=>{yaw:number, pitch:number, zoom:number}} [getView] @property {(v:{yaw?:number, pitch?:number, zoom?:number})=>void} [setView]   ADDITIVE: the mouse view (tests / debugging)
  */
 
 // =====================================================================================================
@@ -542,7 +549,7 @@ export {};
 /**
  * @typedef {(
  *  {kind:'game', action:GameAction, down:boolean} |
- *  {kind:'app', action:'newGame'|'launchBall'|'pause'|'fullscreen'|'sounds'|'music'|'controls'|'help'|'camera'} |
+ *  {kind:'app', action:'newGame'|'launchBall'|'pause'|'fullscreen'|'sounds'|'music'|'controls'|'help'|'camera'|'cinematic'} |
  *  {kind:'cheat', word:CheatWord} |
  *  {kind:'debug', key:'H'|'R'|'B'|'S'|'I'|'J'|'Y'} |
  *  {kind:'pointer', phase:'down'|'move'|'up', clientX:number, clientY:number, button:number}
@@ -564,9 +571,10 @@ export {};
  * @property {()=>void} releaseAll                     emit 'up' for every held game key (blur, pause, tilt)
  * @property {(on:boolean)=>void} setDebug             enables debug keys + pointer events
  * @property {(on:boolean)=>void} setPointerFlippers   mouse/touch flippers on #table-view (default true; false in 'orbit' camera)
+ * @property {(on:boolean)=>void} [setMouseButtons]    ADDITIVE: mouse buttons work the flippers / plunger (default true; false = Mouse Rotates View; touch unaffected)
  * @property {()=>boolean} [isBlocked] @property {()=>boolean} [isDebug] @property {(action:GameAction)=>boolean} [isDown]   ADDITIVE (INTEGRATOR): read-only state for tests
  */
-/** @typedef {{sounds:boolean, music:boolean, fullscreen:boolean, players:1|2|3|4, camera:CameraMode, volume:number, soundConsent:'unset'|'granted'|'denied'}} Options */
+/** @typedef {{sounds:boolean, music:boolean, fullscreen:boolean, players:1|2|3|4, camera:CameraMode, volume:number, soundConsent:'unset'|'granted'|'denied', cinematic:boolean, mouseLook:boolean}} Options   cinematic, mouseLook: ADDITIVE */
 /**
  * @typedef {Object} Store                             src/ui/storage.js (every access try/catch; works with storage === null)
  * @property {()=>Options} getOptions @property {(patch:Partial<Options>)=>Options} setOptions
@@ -581,6 +589,7 @@ export {};
  * @property {(n:number)=>void} selectPlayers @property {(on:boolean)=>void} setSounds @property {(on:boolean)=>void} setMusic
  * @property {(v:number)=>void} setVolume
  * @property {()=>void} toggleFullscreen @property {(m:CameraMode)=>void} setCamera
+ * @property {(on:boolean)=>void} [setCinematic] @property {(on:boolean)=>void} [setMouseLook] @property {()=>void} [resetView]   ADDITIVE: cinematic camera, mouse view
  * @property {(name:string|null)=>void} submitName @property {()=>void} clearHighScores
  * @property {(b:Bindings)=>void} setBindings @property {()=>void} resetBindings
  * @property {(files:FileList|File[])=>void} loadLocalSounds
@@ -611,6 +620,7 @@ export {};
  * @typedef {Object} CreateGameOpts
  * @property {SoundPort} [sound] @property {Rand01} [rand] @property {DataModule} [data] @property {HighScoreTableApi} [highScores]
  * @property {{createPhysics?:Function, createLamps?:Function, createRules?:Function}} [factories]   test seam: replace a factory (e.g. spies proving the step order)
+ * @property {(events:PhysicsEvent[])=>void} [onPhysicsEvents]   ADDITIVE: observer of every drained event batch (after the rules); main.js feeds the cinematic camera
  */
 /**
  * @typedef {Object} Game                              what createGame() returns (src/game.js) - headless, Node-safe

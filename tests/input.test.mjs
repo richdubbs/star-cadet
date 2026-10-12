@@ -120,9 +120,9 @@ test('keys: a stray keyup emits nothing; modifiers (Ctrl / Meta / Alt) leave the
   assert.deepEqual(r.events, []);
 });
 
-test('app keys: F1 F2 F3 F4 F5 F6 F8 Enter V emit app events (keydown only, no repeat, preventDefault)', () => {
+test('app keys: F1 F2 F3 F4 F5 F6 F8 Enter V C emit app events (keydown only, no repeat, preventDefault)', () => {
   const r = rig();
-  const map = { F2: 'newGame', Enter: 'launchBall', F3: 'pause', F4: 'fullscreen', F5: 'sounds', F6: 'music', F8: 'controls', F1: 'help', KeyV: 'camera' };
+  const map = { F2: 'newGame', Enter: 'launchBall', F3: 'pause', F4: 'fullscreen', F5: 'sounds', F6: 'music', F8: 'controls', F1: 'help', KeyV: 'camera', KeyC: 'cinematic' };
   for (const [code, action] of Object.entries(map)) {
     r.clear();
     const e = r.key('keydown', code);
@@ -479,4 +479,24 @@ test('createInput validates its options and is importable / usable with no globa
   noop.releaseAll();
   noop.detach();
   assert.equal(typeof noop.setPointerFlippers, 'function');
+});
+
+test('setMouseButtons(false) (Mouse Rotates View): mouse buttons stop working the table, a held one is let go; touch still flips', () => {
+  const r = rig();
+  assert.equal(r.input.getMouseButtons(), true);
+  r.fire(r.table, 'mousedown', { button: 0, clientX: 10, clientY: 10 });
+  assert.equal(r.input.isDown('flipperLeft'), true);
+  r.input.setMouseButtons(false);
+  assert.equal(r.input.isDown('flipperLeft'), false, 'released when the mouse is handed to the view');
+  r.clear();
+  r.fire(r.table, 'mousedown', { button: 0, clientX: 10, clientY: 10 });
+  r.fire(r.table, 'mousedown', { button: 2, clientX: 10, clientY: 10 });
+  r.fire(r.table, 'mousedown', { button: 1, clientX: 10, clientY: 10 });
+  assert.deepEqual(games(r.events), []);
+  r.fire(r.table, 'pointerdown', { pointerType: 'touch', pointerId: 7, clientX: 10, clientY: 10 });
+  assert.deepEqual(games(r.events), ['flipperLeft:down'], 'touch flippers are unaffected');
+  r.input.setMouseButtons(true);
+  r.clear();
+  r.fire(r.table, 'mousedown', { button: 2, clientX: 10, clientY: 10 });
+  assert.deepEqual(games(r.events), ['flipperRight:down']);
 });

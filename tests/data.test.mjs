@@ -680,12 +680,12 @@ rtest('constants vs SPEC 1.x/4.1/5.12/6.x', () => {
   assert.equal(TABLE.width, 16); assert.equal(TABLE.height, 29);
 });
 
-test('events: the 32 physics event types of ARCHITECTURE 5.3', () => {
+test('events: the 32 physics event types of ARCHITECTURE 5.3 + flipperHit (additive, presentation only)', () => {
   const expected = ['bumperHit', 'rebounderHit', 'popupHit', 'popupUp', 'soloHit', 'rolloverEnter', 'tripwire', 'oneway', 'onewaySide', 'rampLine1', 'rampEnter', 'rampExit',
     'rampHoleCaptured', 'rampHoleReleased', 'kickoutCapture', 'kickoutEject', 'sinkCapture', 'sinkEject', 'flagFrame', 'flagLoop', 'kickbackFired', 'kickbackTimerExpired',
-    'blockerHit', 'drain', 'plungerFed', 'plungerPull', 'plungerRelease', 'stuckRelaunch', 'flipper', 'nudge', 'nudgeCount', 'demoTrigger'];
+    'blockerHit', 'drain', 'plungerFed', 'plungerPull', 'plungerRelease', 'stuckRelaunch', 'flipper', 'nudge', 'nudgeCount', 'demoTrigger', 'flipperHit'];
   assert.deepEqual([...EVENT_TYPES].sort(), [...expected].sort());
-  assert.equal(new Set(EVENT_TYPES).size, 32);
+  assert.equal(new Set(EVENT_TYPES).size, 33);
   for (const [k, v] of Object.entries(EV)) assert.equal(k, v.replace(/([A-Z])/g, '_$1').toUpperCase(), `EV.${k} should be the SCREAMING_SNAKE of ${v}`);
 });
 

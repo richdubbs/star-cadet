@@ -152,7 +152,7 @@ test('storage: defaults without any storage (null, undefined in Node)', () => {
     assert.equal(st.getBindings(), null);
     assert.equal(st.getHighScores(), null);
   }
-  assert.deepEqual(DEFAULT_OPTIONS, { sounds: true, music: false, fullscreen: false, players: 1, camera: 'original', volume: 0.8, soundConsent: 'unset' });
+  assert.deepEqual(DEFAULT_OPTIONS, { sounds: true, music: false, fullscreen: false, players: 1, camera: 'original', volume: 0.8, soundConsent: 'unset', cinematic: false, mouseLook: true });
 });
 
 test('storage: keeps working in memory when null or throwing', () => {
@@ -197,7 +197,11 @@ test('storage: round trips through a real-looking storage and a second store', (
   a.setBindings(b);
   a.setHighScores(SCORES);
   const c = createStore(backend);
-  assert.deepEqual(c.getOptions(), { sounds: true, music: true, fullscreen: true, players: 4, camera: 'original', volume: 0.25, soundConsent: 'granted' });
+  assert.deepEqual(c.getOptions(), { sounds: true, music: true, fullscreen: true, players: 4, camera: 'original', volume: 0.25, soundConsent: 'granted', cinematic: false, mouseLook: true });
+  a.setOptions({ cinematic: true, mouseLook: false });
+  assert.deepEqual([createStore(backend).getOptions().cinematic, createStore(backend).getOptions().mouseLook], [true, false]);
+  assert.equal(sanitizeOptions({ cinematic: 'yes', mouseLook: 0 }).cinematic, false, 'only booleans are accepted');
+  assert.equal(sanitizeOptions({ cinematic: 'yes', mouseLook: 0 }).mouseLook, true);
   assert.deepEqual(c.getBindings(), b);
   assert.deepEqual(c.getHighScores(), SCORES);
   assert.ok(backend._m.has(STORAGE_KEYS.options) && backend._m.has(STORAGE_KEYS.bindings) && backend._m.has(STORAGE_KEYS.highScores));

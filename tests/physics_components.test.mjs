@@ -861,6 +861,7 @@ const SHAPES = {
   sinkEject: ['id', 'from'], flagFrame: ['name', 'frame', 'dir'], flagLoop: ['name'], kickbackFired: ['id'], kickbackTimerExpired: ['id'],
   blockerHit: ['impact'], drain: ['ballId', 'remaining', 'via'], plungerFed: ['ballId'], plungerPull: [], plungerRelease: ['boost', 'hitBall'],
   stuckRelaunch: [], flipper: ['side', 'action', 'byKey'], nudge: ['dir'], nudgeCount: ['level', 'count'], demoTrigger: ['id'],
+  flipperHit: ['side', 'ballId', 'speed'],
 };
 
 test('every PhysicsEvent type of EVENT_TYPES has a payload shape in this suite (new event types must be added)', () => {

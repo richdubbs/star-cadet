@@ -14,8 +14,11 @@
  *  - viewOffsetFor(canvasWidthPx) is the contract function (canvas aspect exactly 365:416). viewOffsetForSize() is the general version used
  *    by the renderer: it scales by S = min(w/365, h/416) and CENTRES the 365x416 window inside the canvas (a canvas of a different aspect
  *    just shows a little more of the cabinet), and adds the nudge shake (px at 365-px width, +x = image shifts right, +y = image shifts down).
+ *  - The mouse view (yaw / pitch / zoom of the ORIGINAL camera) turns the whole camera rigidly about VIEW_PIVOT, the floor point under the centre of the
+ *    window: at rest the image is exactly the original one, and whatever the rotation the centre of the screen stays on that point. Zoom scales the
+ *    distance to it. The cinematic camera uses the same rig with the ball as pivot (so the followed ball sits in the centre of the screen).
  */
-import { CAMERA, TABLE, projectToTablePx } from '../data/constants.js';
+import { CAMERA, TABLE, projectToTablePx, unprojectFloor } from '../data/constants.js';
 
 /** Constants of the original camera, in Three.js axes where noted. */
 export const ORIGINAL_CAMERA = Object.freeze({
@@ -83,4 +86,58 @@ export function topViewBounds(aspect, margin = 0.5) {
   let w = needW, h = needH;
   if (aspect >= needW / needH) w = h * aspect; else h = w / aspect;
   return { left: -w / 2, right: w / 2, top: h / 2, bottom: -h / 2, centerX: TABLE.centerX, centerY: TABLE.centerY };
+}
+
+// ---- mouse view + cinematic rig (pure numbers; cameras.js applies them with three) ------------------------------------------------------------
+
+/** Floor point under the centre of the visible window, in Three.js axes ([x, y, z] = [-Tx, 0, Ty]): the pivot of the mouse view. */
+export const VIEW_PIVOT = Object.freeze((() => {
+  const [x, y] = unprojectFloor(ORIGINAL_CAMERA.winW / 2, ORIGINAL_CAMERA.winH / 2);
+  return [-x, 0, y];
+})());
+
+/** Distance and elevation (rad) of the original camera seen from VIEW_PIVOT. */
+export const VIEW_BASE = Object.freeze((() => {
+  const p = ORIGINAL_CAMERA.position;
+  const dx = p[0] - VIEW_PIVOT[0], dy = p[1] - VIEW_PIVOT[1], dz = p[2] - VIEW_PIVOT[2];
+  const r = Math.hypot(dx, dy, dz);
+  return { r, elevation: Math.asin(dy / r) };
+})());
+
+/** Limits of the mouse view: camera elevation above the table plane (rad), zoom = distance factor, minimum camera height near the table. */
+export const VIEW_LIMITS = Object.freeze({ elevationMin: 4 * Math.PI / 180, elevationMax: 89 * Math.PI / 180, zoomMin: 0.4, zoomMax: 2.6, minHeight: 3.2 });
+
+/**
+ * Clamp a mouse view {yaw, pitch, zoom} in place (pitch = change of elevation from the original camera, rad; zoom = distance factor).
+ * A close camera is also kept above the glass: its elevation is raised until it is at least VIEW_LIMITS.minHeight above the playfield.
+ * @param {{yaw:number, pitch:number, zoom:number}} v @returns {typeof v}
+ */
+export function clampView(v) {
+  const L = VIEW_LIMITS;
+  if (!Number.isFinite(v.yaw)) v.yaw = 0;
+  if (!Number.isFinite(v.zoom)) v.zoom = 1;
+  if (!Number.isFinite(v.pitch)) v.pitch = 0;
+  v.zoom = Math.min(L.zoomMax, Math.max(L.zoomMin, v.zoom));
+  const r = VIEW_BASE.r * v.zoom;
+  const lowest = Math.max(L.elevationMin, Math.asin(Math.min(1, L.minHeight / r)));
+  const el = Math.min(L.elevationMax, Math.max(lowest, VIEW_BASE.elevation + v.pitch));
+  v.pitch = el - VIEW_BASE.elevation;
+  return v;
+}
+
+/**
+ * Cinematic camera framing: distance to the followed ball (close: the ball is ~13 % of the picture width; pulls back for fast balls), the change of
+ * elevation from the normal view (0: as steep as the normal view, so ramps and habitrails do not hide the ball) and the elevation limits.
+ */
+export const CINE_RIG = Object.freeze({ distance: 5.0, perSpeed: 0.06, maxSpeed: 45, tilt: 0, elevationMin: 42 * Math.PI / 180, elevationMax: 74 * Math.PI / 180 });
+
+/** @param {number} speed ball speed (u/s) @returns {number} camera distance to the ball */
+export function cinematicDistance(speed) {
+  const s = Math.min(CINE_RIG.maxSpeed, Math.max(0, Number(speed) || 0));
+  return CINE_RIG.distance + s * CINE_RIG.perSpeed;
+}
+
+/** @param {number} elevation rad, of the normal view @returns {number} rad, of the cinematic view (a little lower, within limits) */
+export function cinematicElevation(elevation) {
+  return Math.min(CINE_RIG.elevationMax, Math.max(CINE_RIG.elevationMin, elevation - CINE_RIG.tilt));
 }

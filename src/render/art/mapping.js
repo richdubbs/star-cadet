@@ -46,3 +46,31 @@ export function patchScale(patch) { return patch.width / (patch.rect.xMax - patc
 export function lampCellUV(cell, size, lx, ly) {
   return [cell.u0 + (0.5 - lx / size[0]) * (cell.u1 - cell.u0), cell.v1 - (ly / size[1] + 0.5) * (cell.v1 - cell.v0)];
 }
+
+/**
+ * Additive (ART-owned, shared with RENDER): the arcade cabinet's panels in Three.js table axes (x = -Tx, y = height above the playfield, z = Ty).
+ * render/cabinet.js builds the body from these numbers and art/cabinet.js paints the panels to fit them. The body bottom is LEVEL in the room
+ * (the playfield rises towards the backbox by `incline`, the legs are all the same length), so the side panels are trapezoids: frontDepth tall
+ * at the front, deeper at the back.
+ */
+export const CABINET = Object.freeze({
+  incline: 6.5 * Math.PI / 180,
+  xIn: 8.0, xOut: 8.8,                 // side walls: inner / outer face
+  zFrontIn: 15.0, zFront: 15.8,        // front wall: inner / outer face
+  zTopIn: -14.0, zBox: -14.6,          // top end of the playfield / front face of the backbox
+  zBack: -22.6,                        // back of the body
+  yTop: 2.45,                          // top of the walls (under the rails)
+  frontDepth: 8.2,                     // body height at the front face
+});
+
+/** Table-frame y of the (room-level) bottom of the body at depth z. @param {number} z */
+export function cabinetBottomY(z) {
+  return CABINET.yTop - CABINET.frontDepth - (CABINET.zFront - z) * Math.tan(CABINET.incline);
+}
+
+/** Side panel layout: bottom y at the back / front, panel height (back) and v of the bottom edge at the shallow (front) end. */
+export const CABINET_SIDE = Object.freeze((() => {
+  const yBack = cabinetBottomY(CABINET.zBack), yFront = cabinetBottomY(CABINET.zFront);
+  const height = CABINET.yTop - yBack;
+  return { yBack, yFront, height, length: CABINET.zFront - CABINET.zBack, shallowV: (yFront - yBack) / height };
+})());

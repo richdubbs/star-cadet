@@ -45,9 +45,10 @@ function makePage() {
 /** A renderer double that records what the loop does with it. */
 function fakeRenderer() {
   const r = {
-    domElement: null, renders: 0, modes: [], mode: 'original', throwOnRender: false, resizes: [],
+    domElement: null, renders: 0, modes: [], mode: 'original', throwOnRender: false, resizes: [], mouseLook: [], resets: 0, frames: [],
     resize(w, h, dpr) { r.resizes.push([w, h, dpr]); },
-    render() { r.renders++; if (r.throwOnRender) throw new Error('boom render'); },
+    render(f) { r.renders++; r.frames.push({ cinematic: f && f.cinematic ? { ...f.cinematic } : null }); if (r.frames.length > 20) r.frames.shift(); if (r.throwOnRender) throw new Error('boom render'); },
+    setMouseLook(on) { r.mouseLook.push(on); }, resetView() { r.resets++; },
     setCameraMode(m) { r.mode = m; r.modes.push(m); },
     getCameraMode: () => r.mode,
     cycleCameraMode() { r.mode = { original: 'top', top: 'orbit', orbit: 'original' }[r.mode]; return r.mode; },
@@ -113,7 +114,7 @@ function errorSpy(t) {
 // =====================================================================================================================================
 // boot and the start flows
 // =====================================================================================================================================
-test('boot: the start card is up and blocks the game keys, nothing is fetched, music is OFF, the debug handle has its twelve members', (t) => {
+test('boot: the start card is up and blocks the game keys, nothing is fetched, music is OFF, the debug handle has its thirteen members', (t) => {
   const errors = errorSpy(t);
   const k = makeApp();
   assert.equal(k.doc.getElementById('start-overlay').hidden, false);
@@ -124,7 +125,7 @@ test('boot: the start card is up and blocks the game keys, nothing is fetched, m
   assert.equal(k.app.audio.music.isEnabled(), false);
   assert.equal(k.store.getOptions().music, false);
   assert.deepEqual(Object.keys(k.win.__pinball).sort(),
-    ['actions', 'art', 'audio', 'data', 'game', 'input', 'lamps', 'physics', 'renderer', 'rules', 'store', 'ui'].sort());
+    ['actions', 'art', 'audio', 'cinematic', 'data', 'game', 'input', 'lamps', 'physics', 'renderer', 'rules', 'store', 'ui'].sort());
   k.key('keydown', 'KeyZ', 'z');                                   // blocked: nothing reaches the rules
   assert.equal(k.app.input.isDown('flipperLeft'), false);
   k.run(1);
@@ -693,7 +694,13 @@ test('the real renderer replaces the stand-in: canvas swapped, camera from the o
   assert.equal(k.app.input.isDown('flipperLeft'), false, 'in orbit mode the mouse is the camera, not a flipper');
   k.key('keydown', 'KeyV', 'v');                                    // orbit -> original
   fire(k.table, 'mousedown', { button: 0, clientX: 10, clientY: 10 });
-  assert.equal(k.app.input.isDown('flipperLeft'), true);
+  assert.equal(k.app.input.isDown('flipperLeft'), false, 'Mouse Rotates View (default): the mouse turns the view');
+  assert.deepEqual(r.mouseLook.slice(-1), [true]);
+  k.app.actions.setMouseLook(false);
+  assert.deepEqual(r.mouseLook.slice(-1), [false]);
+  fire(k.table, 'mousedown', { button: 0, clientX: 10, clientY: 10 });
+  assert.equal(k.app.input.isDown('flipperLeft'), true, 'option off: the mouse buttons are flippers again');
+  assert.equal(store.getOptions().mouseLook, false);
   assert.equal(r.domElement.parentNode, k.table, 'the real canvas is mounted in #table-view');
 });
 
@@ -753,4 +760,78 @@ test('cancelPlunger leaves a ball-save relaunch alone (it charges by itself) but
   p.cancelPlunger();
   assert.equal(p.snapshot().plunger.charging, false);
   assert.equal(p.snapshot().plunger.fired, false, 'dropped, not fired');
+});
+
+// =====================================================================================================================================
+// cinematic camera + mouse view (additive)
+// =====================================================================================================================================
+test('cinematic camera: C toggles the option (stored, toast); a flipper strike slows the simulation to 70 % and rides on the render frame', async () => {
+  const r = fakeRenderer();
+  const k = makeApp({ importRenderer: async () => ({ createRenderer: () => { r.domElement = k.doc.createElement('canvas'); return r; } }) });
+  await k.app.rendererReady;
+  k.toPlunger();
+  assert.equal(k.store.getOptions().cinematic, false, 'off by default');
+  k.tap('KeyC', 'c');
+  assert.equal(k.store.getOptions().cinematic, true);
+  assert.equal(k.app.director.isEnabled(), true);
+  // a real ball on the table, struck by a flipper (the physics event is fed through the game's observer)
+  const ball = k.app.game.physics.spawnBall(1.9, 6.0);
+  k.app.director.onPhysicsEvents([{ type: 'flipperHit', t: 0, side: 'left', ballId: ball.id, speed: 30 }]);
+  k.run(0.05);
+  const cine = r.frames[r.frames.length - 1].cinematic;
+  assert.ok(cine && cine.active, 'the render frame carries the active shot');
+  k.run(0.5);                                                       // fully zoomed in: 70 % speed
+  const t0 = k.app.game.simTime();
+  k.run(0.5);
+  const rate = (k.app.game.simTime() - t0) / 0.5;
+  assert.ok(Math.abs(rate - 0.7) < 0.03, `simulation rate ${rate}`);
+  // off again: the shot fades out and normal speed returns
+  k.tap('KeyC', 'c');
+  assert.equal(k.store.getOptions().cinematic, false);
+  k.run(1.0);
+  const t1 = k.app.game.simTime();
+  k.run(0.5);
+  assert.ok(Math.abs((k.app.game.simTime() - t1) / 0.5 - 1) < 0.03, 'back to full speed');
+});
+
+test('cinematic camera: off in the orthographic Top view (no zoom there, so no slow motion either), back on in the other views', () => {
+  const k = makeApp({ search: '?cinematic=1&camera=top' });
+  assert.equal(k.store.getOptions().cinematic, true);
+  assert.equal(k.app.director.isEnabled(), false);
+  k.app.actions.setCamera('original');
+  assert.equal(k.app.director.isEnabled(), true);
+  k.app.actions.setCamera('top');
+  assert.equal(k.app.director.isEnabled(), false);
+  k.app.actions.setCamera('orbit');
+  assert.equal(k.app.director.isEnabled(), true);
+});
+
+test('cinematic camera: ?cinematic=1 switches it on; a new game drops a running shot at once', () => {
+  const k = makeApp({ search: '?cinematic=1' });
+  assert.equal(k.store.getOptions().cinematic, true);
+  assert.equal(k.app.director.isEnabled(), true);
+  k.toPlunger();
+  const ball = k.app.game.physics.spawnBall(1.9, 6.0);
+  k.app.director.onPhysicsEvents([{ type: 'flipperHit', t: 0, side: 'left', ballId: ball.id, speed: 30 }]);
+  k.run(0.2);
+  assert.equal(k.app.director.state.active, true);
+  k.app.actions.newGame();
+  assert.equal(k.app.director.state.active, false);
+  assert.equal(k.app.director.timeScale(), 1);
+});
+
+test('mouse view: on by default (renderer told, mouse buttons off), debug mode hands the mouse back to the ball drag, Reset View reaches the renderer', async () => {
+  const r = fakeRenderer();
+  const k = makeApp({ importRenderer: async () => ({ createRenderer: () => { r.domElement = k.doc.createElement('canvas'); return r; } }) });
+  await k.app.rendererReady;
+  assert.deepEqual(r.mouseLook.slice(-1), [true]);
+  k.start();
+  k.app.rules.setDebug(true);
+  k.run(0.05);
+  assert.deepEqual(r.mouseLook.slice(-1), [false], 'debug: the mouse drags the ball');
+  k.app.rules.setDebug(false);
+  k.run(0.05);
+  assert.deepEqual(r.mouseLook.slice(-1), [true]);
+  k.app.actions.resetView();
+  assert.equal(r.resets, 1);
 });

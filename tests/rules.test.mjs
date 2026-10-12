@@ -1373,7 +1373,7 @@ test('unknown event types and malformed payloads are ignored; every EVENT_TYPES 
     kickbackFired: { id: 1 }, kickbackTimerExpired: { id: 1 }, blockerHit: { impact: 2 }, drain: { ballId: 1, remaining: 1, via: 'drain' },
     plungerFed: { ballId: 1 }, plungerPull: {}, plungerRelease: { boost: 10, hitBall: true }, stuckRelaunch: {},
     flipper: { side: 'left', action: 'extend', byKey: true }, nudge: { dir: 'left' }, nudgeCount: { level: 'warn', count: 0.6 },
-    demoTrigger: { id: 1401 },
+    demoTrigger: { id: 1401 }, flipperHit: { side: 'left', ballId: 1, speed: 30 },
   };
   assert.deepEqual(Object.keys(payloads).sort(), [...DATA.EVENT_TYPES].sort());
   for (const phase of ['idle', 'play']) {

@@ -345,7 +345,10 @@ test('pause veil: the hint mentions F3 on a keyboard and the Resume button on a 
 
 test('help text: mouse and touch controls are described, cheats still are not', () => {
   const text = helpSections({ ...DEFAULT_KEYS }).map((s) => `${s.heading}: ${s.lines.join(' ')}`).join('\n');
-  assert.match(text, /Mouse over the table: left button = left flipper, right button = right flipper, middle button = plunger/);
+  assert.match(text, /Mouse over the table: drag with the left button to turn the view/);
+  assert.match(text, /With Mouse Rotates View off: left button = left flipper, right button = right flipper, middle button = plunger/);
+  assert.match(text, /Cinematic camera: .*slow motion \(70 % speed\)/);
+  assert.match(text, /C switches the cinematic camera/);
   assert.match(text, /Touch screens: .*on-screen buttons around the table/);
   assert.ok(!/below the table/.test(text));
   assert.ok(!/gmax|rmax|1max|bmax|hidden test|easy mode|cheat/i.test(text));

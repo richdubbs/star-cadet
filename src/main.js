@@ -9,9 +9,15 @@
  * (store, audio, game, art, UI, input, renderer), connects them and runs the animation loop:
  *   input (DOM handlers, between frames) -> game.advance(frameDt) [physics@120Hz -> rules events -> rules timers -> lamps]
  *   -> audio.update -> renderer.render(game.buildRenderFrame) -> ui.update.
- * The only global is window.__pinball = { game, physics, lamps, rules, audio, ui, renderer, input, data, store, art, actions } (debugging only).
+ * The only global is window.__pinball = { game, physics, lamps, rules, audio, ui, renderer, input, data, store, art, actions, cinematic } (debugging only).
  *
- * URL flags: ?demo ?seed=<int> ?camera=original|top|orbit ?nosound ?quality=low|high ?touch=1 ?debug=1
+ * URL flags: ?demo ?seed=<int> ?camera=original|top|orbit ?cinematic=1|0 ?nosound ?quality=low|high ?touch=1 ?debug=1
+ *
+ * Cinematic camera (Options > Cinematic Camera, key C): the director (render/cinematic.js) watches the physics events through game's
+ * onPhysicsEvents observer and the render frame; its timeScale() slows the NEXT frame's simulation (game.advance(dt * scale), 70 % during a
+ * shot) and its state rides on the render frame (frame.cinematic) to the camera. Mouse view (Options > Mouse Rotates View, on by default): the
+ * renderer turns the original camera with the mouse and the mouse buttons stop working the flippers (input.setMouseButtons(false)); touch is
+ * unchanged and debug mode keeps the mouse for dragging the ball.
  *
  * Structure: createApp(env) is the whole shell and touches the page ONLY through `env` (document, window, location.search, clock, rAF,
  * renderer loader), so tests/integration_app.test.mjs can run it in Node on a fake DOM; the last lines call it with the real page when a
@@ -41,6 +47,7 @@ import { paintAll } from './render/art/index.js';
 import { mulberry32 } from './render/art/rng.js';
 import { createUI } from './ui/index.js';
 import { createStore } from './ui/storage.js';
+import { createCinematicDirector } from './render/cinematic.js';
 
 /** At most this many console errors per frame stage (a persistent fault must not flood the console 60 times a second). */
 const ERROR_LOG_LIMIT = 5;
@@ -107,6 +114,7 @@ export function createApp(env) {
   const store = env.store || createStore();
   let options = store.getOptions();
   if (q.get('camera')) options = store.setOptions({ camera: /** @type {any} */ (q.get('camera')) });
+  if (q.has('cinematic')) options = store.setOptions({ cinematic: q.get('cinematic') !== '0' });
   if (q.has('nosound')) options = store.setOptions({ sounds: false, soundConsent: 'denied' });
   const seed = q.get('seed');
   const rand = seed !== null && seed !== '' && Number.isFinite(Number(seed)) ? mulberry32(Number(seed)) : Math.random;
@@ -118,7 +126,11 @@ export function createApp(env) {
   const wantsSound = () => options.sounds && options.soundConsent !== 'denied';
   audio.setEnabled(wantsSound());
   audio.setVolume(options.volume);
-  const game = createGame({ sound: audio, rand });
+  const director = createCinematicDirector();
+  /** The cinematic camera needs a perspective camera: the orthographic Top view keeps it (and its slow motion) off. */
+  const syncDirector = () => director.setEnabled(Boolean(options.cinematic) && options.camera !== 'top');
+  syncDirector();
+  const game = createGame({ sound: audio, rand, onPhysicsEvents: (events) => director.onPhysicsEvents(events) });
   const rules = game.rules;
   const savedScores = store.getHighScores();
   if (savedScores) rules.highScores.load(savedScores);
@@ -144,8 +156,14 @@ export function createApp(env) {
     if (d === wasDebug) return;
     wasDebug = d;
     input.setDebug(d);
+    applyMouseMode();
     if (!d && showFps) { showFps = false; ui.setFps(null); }
   };
+  /** The mouse turns the view (Mouse Rotates View, not while debug mode drags the ball) or works the flippers. */
+  function applyMouseMode() {
+    if (typeof renderer.setMouseLook === 'function') renderer.setMouseLook(Boolean(options.mouseLook) && !view().debug);
+    if (input && typeof input.setMouseButtons === 'function') input.setMouseButtons(!options.mouseLook);
+  }
   const inGame = () => view().phase === 'lightShow' || view().phase === 'playing';
   const startEl = () => doc.getElementById('start-overlay');
   const overlayShown = () => { const el = startEl(); return Boolean(el && !el.hidden); };
@@ -228,12 +246,14 @@ export function createApp(env) {
       ui.hideStartOverlay();
       syncBlocked();
       clearPause();
+      director.reset();
       rules.newGame({ players });
     },
     newGame() {
       if (ensureStarted()) return;
       clearPause();
       startMusicIfWanted();
+      director.reset();
       rules.newGame({ players: options.players });
     },
     launchBall() { if (!overlayShown()) rules.launchBall(); },
@@ -247,6 +267,7 @@ export function createApp(env) {
       if (wantsSound()) audio.unlock();
       if (overlayShown()) { ui.hideStartOverlay(); syncBlocked(); }
       clearPause();
+      director.reset();
       const turnOn = !view().demo;
       rules.setDemo(turnOn);
       if (turnOn) startMusicIfWanted();
@@ -256,6 +277,7 @@ export function createApp(env) {
       clearPause();
       audio.stopAll();
       audio.music.stop();                                          // the start card is not a game: no music behind it
+      director.reset();
       rules.stopGame();
       showStart();
       syncBlocked();
@@ -292,7 +314,15 @@ export function createApp(env) {
         if (r && r.catch) r.catch(unavailable);
       } catch { unavailable(); }
     },
-    setCamera(m) { renderer.setCameraMode(m); input.setPointerFlippers(m !== 'orbit'); setOpts({ camera: m }); },
+    setCamera(m) { renderer.setCameraMode(m); input.setPointerFlippers(m !== 'orbit'); setOpts({ camera: m }); syncDirector(); },
+    setCinematic(on) {
+      setOpts({ cinematic: Boolean(on) });
+      syncDirector();
+      const top = options.camera === 'top';
+      ui.toast(on ? (top ? 'Cinematic camera ON (not in the Top view: switch the camera with V).' : 'Cinematic camera ON: a flipper hit follows the ball in slow motion.') : 'Cinematic camera OFF', 2500);
+    },
+    setMouseLook(on) { setOpts({ mouseLook: Boolean(on) }); applyMouseMode(); },
+    resetView() { if (typeof renderer.resetView === 'function') renderer.resetView(); },
     submitName(name) { rules.submitName(name); },
     clearHighScores() { rules.highScores.clear(); },
     setBindings(b) { input.setBindings(b); store.setBindings(input.getBindings()); },
@@ -318,6 +348,7 @@ export function createApp(env) {
     newGame: actions.newGame, launchBall: actions.launchBall, pause: actions.togglePause, fullscreen: actions.toggleFullscreen,
     sounds: () => actions.setSounds(!options.sounds), music: () => actions.setMusic(!options.music),
     controls: () => ui.showControls(input.getBindings()), help: () => ui.showHelp(), camera: () => actions.setCamera(renderer.cycleCameraMode()),
+    cinematic: () => actions.setCinematic(!options.cinematic),
   };
   input = createInput({
     bindings, target: win, doc,
@@ -343,6 +374,7 @@ export function createApp(env) {
   });
   input.attach();
   input.setPointerFlippers(options.camera !== 'orbit');
+  applyMouseMode();
   syncBlocked();
 
   // ---- focus: pause instead of letting the ball drain behind the user's back --------------------------------------------------------------
@@ -396,6 +428,7 @@ export function createApp(env) {
       renderer = real;
       mount(renderer);
       renderer.setCameraMode(options.camera);
+      applyMouseMode();
       resize();
     } catch (err) {
       console.error('[main] the 3D renderer could not be loaded', err);
@@ -424,9 +457,15 @@ export function createApp(env) {
     if (!(dt > 0)) dt = 0;
     else if (dt > data.PHYS.maxFrameDt) dt = data.PHYS.maxFrameDt;
     last = t;
-    try { game.advance(dt); } catch (err) { fail('simulation', err); }   // physics@120Hz -> rules events -> rules timers -> lamps
+    try { game.advance(dt * director.timeScale()); } catch (err) { fail('simulation', err); }   // physics@120Hz -> rules events -> rules timers -> lamps (slow motion during a cinematic shot)
     try { audio.update(dt); } catch (err) { fail('audio', err); }
-    try { renderer.render(game.buildRenderFrame(dt)); } catch (err) { fail('render', err); }
+    try {
+      const rf = game.buildRenderFrame(dt);
+      const v = view();
+      director.update({ balls: rf.physics ? rf.physics.balls : [], time: rf.time, score: v.score, player: v.player, playing: v.phase === 'playing', tilted: v.tilted, paused: game.isPaused() }, dt);
+      rf.cinematic = director.state;
+      renderer.render(rf);
+    } catch (err) { fail('render', err); }
     try { ui.update(view(), dt); syncDebug(); } catch (err) { fail('ui', err); }
     try {
       syncBlocked();
@@ -436,7 +475,7 @@ export function createApp(env) {
   raf(frame);
 
   /** The single allowed global (debugging only; nothing reads it). */
-  win.__pinball = { game, physics: game.physics, lamps: game.lamps, rules, audio, ui, renderer, input, data, store, art, actions };
+  win.__pinball = { game, physics: game.physics, lamps: game.lamps, rules, audio, ui, renderer, input, data, store, art, actions, cinematic: director };
 
   setOpts({});
   if (q.get('debug') === '1') { rules.setDebug(true); syncDebug(); }
@@ -448,7 +487,7 @@ export function createApp(env) {
     syncBlocked();
   }
 
-  return { game, rules, audio, ui, input, store, art, actions, frame, getRenderer: () => renderer, rendererReady, errors };
+  return { game, rules, audio, ui, input, store, art, actions, frame, getRenderer: () => renderer, rendererReady, errors, director };
 }
 
 // ---- browser entry (importing this module in Node, where there is no document, only defines createApp) ----------------------------------------

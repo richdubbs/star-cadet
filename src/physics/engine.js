@@ -252,6 +252,15 @@ export class Engine {
         if (f.k >= step) f.collideAndRotate(f.dA, balls);
       }
     }
+    // flipper strikes of this step (presentation only: nothing in physics or rules depends on them)
+    for (let i = 0; i < flippers.length; i++) {
+      const f = flippers[i];
+      if (!f.strikeBall) continue;
+      const b = f.strikeBall;
+      f.strikeBall = null;
+      f.strikeSpeed = 0;
+      if (!b.dead) this.emit({ type: EV.FLIPPER_HIT, t: this.time, side: f.side, ballId: b.id, speed: b.speed });
+    }
     this.inUpdate = false;
     this.compact();
     // 4. height bookkeeping + safety net (backwards: a lost ball is compacted out of the array while we walk it)

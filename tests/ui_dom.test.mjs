@@ -949,3 +949,22 @@ test('createUI.update: the text HUD under the panel follows the view and is hidd
   assert.equal(textOf(hud.querySelector('.hud-score')), '5000');
   assert.equal(textOf(hud.querySelector('.hud-info')), '');
 });
+
+test('menus: Cinematic Camera / Mouse Rotates View are checkboxes from the options, Reset View an action (additive)', () => {
+  const { menus, item, rec } = makeMenus();
+  assert.equal(item('cinematic').getAttribute('role'), 'menuitemcheckbox');
+  assert.equal(item('mouseLook').getAttribute('role'), 'menuitemcheckbox');
+  assert.equal(item('resetView').getAttribute('role'), 'menuitem');
+  assert.equal(findAll(item('cinematic'), (e) => e.tagName === 'KBD').map(textOf)[0], 'C');
+  assert.equal(item('cinematic').getAttribute('aria-checked'), 'false', 'off by default');
+  assert.equal(item('mouseLook').getAttribute('aria-checked'), 'true', 'on by default');
+  const options = menus.elements.titles[1];
+  const click = (cmd) => { fire(options, 'click'); item(cmd).click(); };
+  click('cinematic');
+  click('mouseLook');
+  click('resetView');
+  assert.deepEqual(rec.calls, [['setCinematic', true], ['setMouseLook', false], ['resetView']]);
+  menus.setOptions({ ...DEFAULT_OPTIONS, cinematic: true, mouseLook: false });
+  assert.equal(item('cinematic').getAttribute('aria-checked'), 'true');
+  assert.equal(item('mouseLook').getAttribute('aria-checked'), 'false');
+});

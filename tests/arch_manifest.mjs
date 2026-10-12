@@ -139,6 +139,10 @@ export const EXTRA_FILES = [
   F('src/ui/toast.js', 'UI', ['createToasts']),
   F('src/ui/touch.js', 'UI', ['TOUCH_BUTTONS', 'createTouchControls', 'wantsTouchControls']),
   F('tests/helpers/bot.mjs', 'INTEGRATOR', ['createBot', 'createRig']),
+  F('src/render/cinematic.js', 'RENDER', ['createCinematicDirector', 'CINEMATIC']),
+  F('src/render/dmd.js', 'RENDER', ['createDmd', 'dmdScore', 'dmdWidth', 'DMD']),
+  F('src/render/cabinet.js', 'RENDER', [], { node: false }),
+  F('src/render/art/cabinet.js', 'ART', ['paintCabinet', 'CABINET_SIZES', 'CABINET_KEYS']),
 ];
 
 /** Test file each role owns (recommended name; a role may add more tests/<role>_*.test.mjs). Required when ARCH_STRICT=1. */

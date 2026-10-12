@@ -20,9 +20,9 @@
  *    contenteditable elements are ignored the same way, blocked or not.
  *  - cheats: printable characters (event.key, lower-cased; Tab = space) feed a rolling 11-character buffer; a word that is not usable
  *    because a gameplay key was rebound to one of its letters (SPEC 6.9) is skipped.
- *  - mouse over #table-view: button 0 = left flipper, 2 = right flipper, 1 = plunger; touch / pen: left half = left flipper, right half =
- *    right flipper.  With debug on the same gestures are emitted as {kind:'pointer'} instead (ball dragging).  The context menu is suppressed
- *    over the table.  [data-action] / [data-app] buttons inside #touch-controls are handled by delegation.
+ *  - mouse over #table-view: button 0 = left flipper, 2 = right flipper, 1 = plunger (unless setMouseButtons(false): then the mouse belongs to
+ *    the view - Options > Mouse Rotates View); touch / pen: left half = left flipper, right half = right flipper.  With debug on the same
+ *    gestures are emitted as {kind:'pointer'} instead (ball dragging).  The context menu is suppressed over the table.  [data-action] / [data-app] buttons inside #touch-controls are handled by delegation.
  *  - window blur / document hidden => releaseAll().
  *
  * ASSUMPTIONS (gap protocol):
@@ -43,7 +43,7 @@ export const CHEAT_BUFFER_LENGTH = 11;
 /** KeyboardEvent.code -> application command (ARCHITECTURE 11.1).  Gameplay bindings take precedence. */
 export const APP_KEYS = Object.freeze({
   F1: 'help', F2: 'newGame', F3: 'pause', F4: 'fullscreen', F5: 'sounds', F6: 'music', F8: 'controls',
-  Enter: 'launchBall', NumpadEnter: 'launchBall', KeyV: 'camera',
+  Enter: 'launchBall', NumpadEnter: 'launchBall', KeyV: 'camera', KeyC: 'cinematic',
 });
 
 /** Debug keys (only while debug is on): KeyboardEvent.code -> InputEvent key. */
@@ -146,6 +146,7 @@ export function createInput(opts) {
   let blocked = false;
   let debug = false;
   let pointerFlippers = true;
+  let mouseButtons = true;
   let attached = false;
   /** @type {Record<string, Set<string>>} action -> sources currently holding it */
   const held = {};
@@ -256,7 +257,7 @@ export function createInput(opts) {
       }
       return;
     }
-    if (!pointerFlippers) return;
+    if (!pointerFlippers || !mouseButtons) return;
     const action = MOUSE_ACTION[e.button];
     if (action) press(action, 'm:' + e.button);
   }
@@ -398,9 +399,17 @@ export function createInput(opts) {
       pointerFlippers = v;
       if (!v) for (const src of [...sourceAction.keys()]) if (src.startsWith('m:') || src.startsWith('p:')) release(src);
     },
+    /** ADDITIVE: mouse buttons over the table work the flippers / plunger (default true); false = the mouse turns the view instead (touch unaffected). */
+    setMouseButtons(on) {
+      const v = !!on;
+      if (v === mouseButtons) return;
+      mouseButtons = v;
+      if (!v) for (const src of [...sourceAction.keys()]) if (src.startsWith('m:')) release(src);
+    },
     // ---- additive (tests / debugging) ----
     isBlocked: () => blocked,
     isDebug: () => debug,
+    getMouseButtons: () => mouseButtons,
     isDown: (action) => Boolean(held[action] && held[action].size > 0),
   };
 }

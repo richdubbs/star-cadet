@@ -519,6 +519,36 @@ test('flipper: shot from (1.9, 9.0) matches the reference port for every press t
   assert.ok(weak >= 10, 'too early / too late presses leave weakly (or not at all)');
 });
 
+test('flipper: a real flip emits flipperHit {side, ballId, speed} (presentation only); a ball resting on a raised flipper does not', () => {
+  // the reference shot (press at tick 88 launches at ~44 u/s)
+  const p = mk();
+  const b = p.spawnBall(1.9, 9.0);
+  const hits = [];
+  for (let i = 0; i < 300; i++) {
+    if (i === 88) p.setFlipperButton('left', true);
+    p.step();
+    for (const e of p.drainEvents()) if (e.type === 'flipperHit') hits.push(e);
+  }
+  assert.ok(hits.length >= 1 && hits.length <= 3, `one strike (a few sub-step contacts at most), got ${hits.length}`);
+  assert.equal(hits[0].side, 'left');
+  assert.equal(hits[0].ballId, b.id);
+  assert.ok(hits[0].speed > 20, `strike speed ${hits[0].speed}`);
+  assert.ok(hits.every((e) => typeof e.t === 'number'));
+  // the event changes nothing: the same shot without draining in between ends in the same place
+  const q = mk();
+  const c = q.spawnBall(1.9, 9.0);
+  for (let i = 0; i < 300; i++) { if (i === 88) q.setFlipperButton('left', true); q.step(); }
+  assert.equal(c.x, b.x); assert.equal(c.y, b.y);
+  // flipper already up, ball dropped onto it: it bounces / rolls off the static flipper, no strike
+  const r = mk();
+  r.setFlipperButton('left', true);
+  stepN(r, 10);
+  r.drainEvents();
+  r.spawnBall(1.9, 9.0);
+  const ev = run(r, 2);
+  assert.equal(ev.filter((e) => e.type === 'flipperHit').length, 0);
+});
+
 test('flipper: idle flipper is a wall (bounce e 0.75), forced retract on setFlippersEnabled(false) is silent for sound (byKey false)', () => {
   const p = mk();
   p.setFlipperButton('left', true);

@@ -115,8 +115,15 @@ export function helpSections(b) {
         `Left flipper: ${k('flipperLeft')}     Right flipper: ${k('flipperRight')}`,
         `Plunger: hold ${k('plunger')} to pull the plunger back, release it to launch the ball.`,
         `Table bumps: ${k('nudgeLeft')} (left), ${k('nudgeRight')} (right), ${k('nudgeBottom')} (from below).`,
-        'Mouse over the table: left button = left flipper, right button = right flipper, middle button = plunger (not in the Orbit camera, where the mouse moves the view).',
-        'F2 New Game, F3 Pause / Resume, F4 Full Screen, F5 Sounds, F6 Music, F8 Player Controls, F1 Help, Enter Launch Ball, V changes the camera.',
+        'Mouse over the table: drag with the left button to turn the view round the cabinet, use the wheel to zoom, double-click for the normal view again (Options > Mouse Rotates View, on by default; the view never changes the game).',
+        'With Mouse Rotates View off: left button = left flipper, right button = right flipper, middle button = plunger (not in the Orbit camera, where the mouse moves the view).',
+        'F2 New Game, F3 Pause / Resume, F4 Full Screen, F5 Sounds, F6 Music, F8 Player Controls, F1 Help, Enter Launch Ball, V changes the camera, C switches the cinematic camera on and off.',
+      ],
+    },
+    {
+      heading: 'Cinematic camera',
+      lines: [
+        'Options > Cinematic Camera (C): when a flipper hits the ball, the camera zooms in and follows it in slow motion (70 % speed) for a moment or two. Every score while it follows makes the shot last longer; it lets go when the ball comes back towards the flippers.',
       ],
     },
     {

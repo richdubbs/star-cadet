@@ -22,6 +22,7 @@
 /** @type {Readonly<import('../types.js').Options>} */
 export const DEFAULT_OPTIONS = Object.freeze({
   sounds: true, music: false, fullscreen: false, players: 1, camera: 'original', volume: 0.8, soundConsent: 'unset',
+  cinematic: false, mouseLook: true,
 });
 
 export const STORAGE_KEYS = Object.freeze({ options: 'scp.options.v1', bindings: 'scp.bindings.v1', highScores: 'scp.highscores.v1' });
@@ -47,6 +48,8 @@ export function sanitizeOptions(raw, base = DEFAULT_OPTIONS) {
   if (CAMERAS.includes(raw.camera)) o.camera = raw.camera;
   if (typeof raw.volume === 'number' && Number.isFinite(raw.volume)) o.volume = Math.min(1, Math.max(0, raw.volume));
   if (CONSENTS.includes(raw.soundConsent)) o.soundConsent = raw.soundConsent;
+  if (typeof raw.cinematic === 'boolean') o.cinematic = raw.cinematic;
+  if (typeof raw.mouseLook === 'boolean') o.mouseLook = raw.mouseLook;
   return o;
 }
 

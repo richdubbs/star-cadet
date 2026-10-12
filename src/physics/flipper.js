@@ -88,6 +88,9 @@ export class Flipper {
     this.boxMinX = minX - pad; this.boxMaxX = maxX + pad; this.boxMinY = minY - pad; this.boxMaxY = maxY + pad;
     // hit scratch (set by distTo)
     this.hnx = 0; this.hny = 0;
+    // strongest strike of the current step (an extending flipper boosting a ball off its front): the engine turns it into a 'flipperHit' event
+    this.strikeBall = null;
+    this.strikeSpeed = 0;
     this.setAngle(0);
   }
 
@@ -132,6 +135,7 @@ export class Flipper {
   /** Jump to rest (reset). */
   reset() {
     this.rem = 0; this.dst = 0; this.flag = MOTION_NONE; this.ms = 0; this.k = -1; this.dA = 0;
+    this.strikeBall = null; this.strikeSpeed = 0;
     this.setAngle(0);
   }
 
@@ -202,6 +206,8 @@ export class Flipper {
         if (dotn >= 0) boost = this.mult * dotn * v;
       }
       basicCollision(ball, cx, cy, nx, ny, this.el, this.sm, boost > 0 ? -1 : 1e9, boost);
+      // a real flip (not a ball rolling onto a resting flipper): remembered for the step's 'flipperHit' event; no effect on the simulation
+      if (boost > 0 && this.flag === MOTION_EXTEND && ball.speed >= this.strikeSpeed) { this.strikeBall = ball; this.strikeSpeed = ball.speed; }
     } else {
       let e = this.el;
       if (far) e = (1 - Math.sqrt(r2 / this.reachSq)) * this.el;
